@@ -1,0 +1,2607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考勤异常统计系统</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --warning-color: #e74c3c;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+            --border-color: #dfe6e9;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --weekend-color: #f39c12;
+            --holiday-color: #9b59b6;
+            --error-color: #c0392b;
+            --late-color: #d35400;
+            --early-color: #8e44ad;
+            --no-record-color: #7f8c8d;
+            --special-department-color: #27ae60;
+            --tag-bg: #e3f2fd;
+            --filter-active: #e3f2fd;
+            --total-color: #3498db;
+            --active-card: #4fc3f7;
+            --export-color: #27ae60;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: var(--dark-color);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            padding-bottom: 180px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            background: linear-gradient(to right, #ffffff, #f8fafc);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            display: inline-block;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+        
+        .subtitle, .system-status {
+            display: none;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 25px;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+            position: relative;
+        }
+        
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            transition: transform 0.3s;
+        }
+        
+        .upload-area:hover .upload-icon {
+            transform: scale(1.1);
+        }
+        
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn i {
+            margin-right: 8px;
+        }
+        
+        .export-btn {
+            background: var(--export-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(39, 174, 96, 0.3);
+        }
+        
+        .export-btn:hover {
+            background: #219653;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(39, 174, 96, 0.4);
+        }
+        
+        .export-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: var(--dark-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .instructions h3 i {
+            margin-right: 8px;
+            transition: transform 0.3s;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            display: none; /* 默认折叠 */
+        }
+        
+        .instructions.expanded ul {
+            display: block; /* 展开时显示 */
+        }
+        
+        .instructions.expanded h3 i {
+            transform: rotate(90deg);
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            th, td {
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(52, 152, 219, 0.2);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .file-info strong {
+            color: var(--primary-color);
+        }
+        
+        .weekend-row {
+            background-color: #fffaf0 !important;
+        }
+        
+        .holiday-row {
+            background-color: #f5f0fa !important;
+        }
+        
+        .note-weekend {
+            color: var(--weekend-color);
+            font-weight: 500;
+        }
+        
+        .note-holiday {
+            color: var(--holiday-color);
+            font-weight: 500;
+        }
+        
+        .note-late {
+            color: var(--late-color);
+            font-weight: 500;
+        }
+        
+        .note-early {
+            color: var(--early-color);
+            font-weight: 500;
+        }
+        
+        .note-no-record {
+            color: var(--no-record-color);
+            font-weight: 500;
+        }
+        
+        .error-log {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #f8d7da;
+            color: var(--error-color);
+            padding: 15px;
+            border-top: 2px solid var(--error-color);
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .error-log h3 {
+            margin-bottom: 10px;
+            color: var(--error-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .error-log-content {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .toggle-log-btn {
+            background: none;
+            border: none;
+            color: var(--error-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .debug-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e9f7ef;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .debug-info h3 {
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .debug-content {
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .show-more {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            text-align: left;
+            display: block;
+            width: 100%;
+            margin-top: 5px;
+        }
+        
+        .show-more:hover {
+            text-decoration: underline;
+        }
+        
+        .rule-highlight {
+            background-color: #fffacd;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .rule-card {
+            background: #e8f4f8;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .rule-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+        
+        .rule-card ul {
+            padding-left: 20px;
+        }
+        
+        .rule-card li {
+            margin-bottom: 5px;
+        }
+        
+        .department-badge {
+            background: #e0f7fa;
+            color: #0097a7;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+        
+        .special-department {
+            background: var(--special-department-color);
+            color: white;
+        }
+        
+        .copyright {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+        
+        /* 优化后的统计区域 - 紧凑布局 */
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            align-items: center;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            min-width: 160px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card.active {
+            border-color: var(--active-card);
+            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.4);
+        }
+        
+        .stat-card.total {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1a6ca1 100%);
+            color: white;
+            min-width: 200px;
+            flex: 1.5;
+        }
+        
+        .stat-card.total .stat-value {
+            font-size: 2.0rem;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card.total .stat-label {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 2px 0;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .abnormal-stat { color: white; }
+        .late-stat { color: var(--late-color); }
+        .early-stat { color: var(--early-color); }
+        .absent-stat { color: var(--no-record-color); }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        .legend-weekend { background-color: #fffaf0; border: 1px solid var(--weekend-color); }
+        .legend-holiday { background-color: #f5f0fa; border: 1px solid var(--holiday-color); }
+        .legend-special { background-color: var(--special-department-color); }
+        
+        /* 修复表头布局问题 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: relative;
+            table-layout: fixed;
+        }
+        
+        /* 优化表格列宽 */
+        th:nth-child(1), td:nth-child(1) { width: 12%; } /* 日期 */
+        th:nth-child(2), td:nth-child(2) { width: 18%; } /* 姓名 */
+        th:nth-child(3), td:nth-child(3) { width: 15%; } /* 部门 */
+        th:nth-child(4), td:nth-child(4) { width: 15%; } /* 最早进门时间 */
+        th:nth-child(5), td:nth-child(5) { width: 20%; } /* 最晚出门时间 */
+        th:nth-child(6), td:nth-child(6) { width: 20%; } /* 备注 */
+        
+        th {
+            background: var(--primary-color);
+            color: white;
+            text-align: left;
+            padding: 16px 15px;
+            font-weight: 600;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        
+        .filter-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-start;
+            position: relative;
+        }
+        
+        .filter-icon {
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .filter-icon.active {
+            color: #ffeb3b;
+        }
+        
+        /* 筛选面板修复 */
+        .filter-panel {
+            position: absolute;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            z-index: 10000;
+            padding: 15px;
+            display: none;
+            width: 280px;
+            max-height: 80vh;
+            overflow: hidden;
+            flex-direction: column;
+        }
+        
+        .filter-panel h4 {
+            margin-bottom: 10px;
+            color: var(--dark-color);
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .filter-panel .close-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .filter-panel .search-container {
+            position: relative;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        
+        .filter-panel .search-container input {
+            width: 100%;
+            padding: 8px 15px 8px 35px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .filter-panel .search-container i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+        
+        .filter-list {
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px;
+            flex: 1;
+            min-height: 40px;
+            max-height: 300px;
+        }
+        
+        .filter-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+        
+        .filter-item:hover {
+            background: #f0f7ff;
+        }
+        
+        .filter-item input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        
+        .filter-item label {
+            flex-grow: 1;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--dark-color);
+        }
+        
+        .filter-actions {
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .filter-actions button {
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .select-all-btn {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .clear-filter-btn {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .apply-filter-btn {
+            background: var(--secondary-color);
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+        
+        .filter-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background: #ffeb3b;
+            border-radius: 50%;
+        }
+        
+        /* 修复表格行高亮问题 */
+        tr:hover td {
+            background: #f8fafc;
+        }
+        
+        td {
+            padding: 14px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* 隐藏公式文本 */
+        .total-relation {
+            display: none !important;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .stats-container {
+                flex-direction: column;
+            }
+            
+            .stat-card {
+                width: 100%;
+                min-width: 100%;
+            }
+            
+            th:nth-child(1), td:nth-child(1) { width: 20%; }
+            th:nth-child(2), td:nth-child(2) { width: 20%; }
+            th:nth-child(3), td:nth-child(3) { width: 20%; }
+            th:nth-child(4), td:nth-child(4) { width: 20%; }
+            th:nth-child(5), td:nth-child(5) { width: 20%; }
+            th:nth-child(6), td:nth-child(6) { width: 20%; }
+            
+            .stat-card.total {
+                min-width: 100%;
+            }
+            
+            .stat-value {
+                font-size: 1.6rem;
+            }
+            
+            .filter-panel {
+                width: 90%;
+                max-width: 300px;
+                max-height: 50vh;
+            }
+            
+            .filter-list {
+                max-height: calc(50vh - 200px);
+            }
+        }
+        
+        .holiday-calendar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .holiday-calendar h3 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .holiday-calendar h3 i {
+            margin-right: 8px;
+        }
+        
+        .holiday-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .holiday-item {
+            background: #e8f4f8;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .holiday-name {
+            font-weight: bold;
+            color: var(--holiday-color);
+        }
+        
+        /* 空状态提示样式 */
+        .empty-table-message {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            color: #666;
+            border: 1px dashed var(--border-color);
+        }
+        
+        .empty-table-message a {
+            color: var(--primary-color);
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 20px;
+            border-radius: 30px;
+            background: var(--primary-color);
+            color: white;
+            transition: all 0.3s;
+        }
+        
+        .empty-table-message a:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+        
+        .empty-table-message i {
+            font-size: 3.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: block;
+            opacity: 0.7;
+        }
+        
+        /* 状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background-color: var(--secondary-color);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        /* 筛选状态标签 */
+        .filter-tag {
+            background: #e3f2fd;
+            color: var(--primary-color);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+        
+        .filter-tag i {
+            margin-left: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .filter-tag:hover {
+            background: #bbdefb;
+        }
+        
+        /* 优化后的筛选和导出区域 - 合并布局 */
+        .filter-export-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            gap: 15px;
+        }
+        
+        .active-filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .filter-tag.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .export-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        
+        .export-info {
+            font-size: 0.9rem;
+            color: #27ae60;
+            font-weight: 500;
+            background: rgba(39, 174, 96, 0.1);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        
+        .export-info i {
+            margin-right: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .export-count {
+            font-weight: bold;
+            margin: 0 3px;
+            font-size: 1rem;
+        }
+        
+        .export-btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2);
+            font-size: 0.95rem;
+        }
+        
+        .export-btn i {
+            font-size: 1.1rem;
+        }
+        
+        /* 文件名预览 - 已移除 */
+        .filename-preview {
+            display: none !important;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 900px) {
+            .filter-export-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .active-filter-container {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .export-container {
+                width: 100%;
+                justify-content: space-between;
+                padding-top: 10px;
+                border-top: 1px dashed #ddd;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .export-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .export-info {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .export-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>考勤异常统计系统</h1>
+            <p>高效识别考勤异常，提升管理效率</p>
+        </header>
+        
+        <main>
+            <div class="card">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-bar"></i> 数据上传区域
+                </h2>
+                
+                <div class="instructions">
+                    <h3 class="instructions-toggle">
+                        <i class="fas fa-caret-right"></i> 使用说明（点击展开）
+                    </h3>
+                    <ul>
+                        <li>上传的Excel表格需包含以下表头：<strong>编号、姓名、部门、打卡时间、门禁、进出</strong></li>
+                        <li>支持点击表头进行筛选</li>
+                        <li>周末和法定节假日异常记录会特殊标记</li>
+                        <li>进出类型只识别：<strong>进门</strong>和<strong>出门</strong></li>
+                        <li>系统自动识别2025年法定节假日和调休上班日期</li>
+                        
+                        <!-- 考勤规则说明 -->
+                        <li class="rule-card">
+                            <h4>考勤规则说明：</h4>
+                            <ul>
+                                <li><span class="rule-highlight">规则1：</span>9:30前到岗 → 需17:30后下班（含17:30:00及之后）</li>
+                                <li><span class="rule-highlight">规则2：</span>9:30后到岗 → 视为迟到（异常）</li>
+                                <li><span class="rule-highlight">规则3：</span>9:00-9:30到岗 → 需18:00后下班</li>
+                                <li><span class="rule-highlight">规则4：</span>17:30前离岗 → 视为早退（异常）</li>
+                                <li><span class="rule-highlight">规则5：</span>工作日无任何打卡记录 → 视为缺勤（异常）</li>
+                                <li>系统将根据打卡记录计算最早进门时间和最晚出门时间</li>
+                                <li>不符合上述规则的记录将被标记为"异常"</li>
+                                <li>周末和法定节假日的异常记录会特殊标注</li>
+                            </ul>
+                        </li>
+                        
+                        <!-- 2025年法定节假日 -->
+                        <li class="holiday-calendar">
+                            <h3><i class="fas fa-calendar-alt"></i> 2025年法定节假日</h3>
+                            <div class="holiday-list">
+                                <div class="holiday-item"><span class="holiday-name">元旦：</span>1月1日</div>
+                                <div class="holiday-item"><span class="holiday-name">春节：</span>1月28日-2月4日</div>
+                                <div class="holiday-item"><span class="holiday-name">清明节：</span>4月4日-6日</div>
+                                <div class="holiday-item"><span class="holiday-name">劳动节：</span>5月1日-5日</div>
+                                <div class="holiday-item"><span class="holiday-name">端午节：</span>5月31日-6月2日</div>
+                                <div class="holiday-item"><span class="holiday-name">国庆节：</span>10月1日-7日</div>
+                                <div class="holiday-item"><span class="holiday-name">中秋节：</span>10月6日</div>
+                            </div>
+                        </li>
+                        
+                        <!-- 图例说明 -->
+                        <li class="legend">
+                            <div class="legend-item">
+                                <div class="legend-color legend-weekend"></div>
+                                <span>周末记录</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-holiday"></div>
+                                <span>法定节假日</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color legend-special"></div>
+                                <span>特殊部门员工</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div id="uploadArea" class="upload-area">
+                    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <h3>上传考勤数据Excel文件</h3>
+                    <p>拖放文件到此处，或点击选择文件</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+                    <button class="btn" id="uploadBtn">
+                        <i class="fas fa-folder-open"></i> 选择文件
+                    </button>
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        已选择文件: <strong id="fileName"></strong> (<span id="fileSize"></span>)
+                    </div>
+                </div>
+                
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>正在处理考勤数据，请稍候...</p>
+                    <p class="status-indicator">系统正常运行中</p>
+                </div>
+            </div>
+            
+            <div class="card" id="resultSection" style="display: none;">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-line"></i> 考勤异常统计
+                </h2>
+                
+                <div class="debug-info">
+                    <h3>
+                        <span>数据处理日志</span>
+                        <span class="status-indicator"></span>
+                    </h3>
+                    <div id="debugLog" class="debug-content"></div>
+                    <button id="showMoreDebug" class="show-more" style="display: none;">查看更多日志...</button>
+                </div>
+                
+                <!-- 优化后的统计区域 - 紧凑布局 -->
+                <div class="stats-container">
+                    <div class="stat-card total active" id="abnormalCard" data-type="all">
+                        <div class="stat-value abnormal-stat" id="abnormalCount">0</div>
+                        <div class="stat-label">异常记录总数</div>
+                    </div>
+                    
+                    <div class="stat-card" id="lateCard" data-type="late">
+                        <div class="stat-value late-stat" id="lateCount">0</div>
+                        <div class="stat-label">迟到记录</div>
+                    </div>
+                    
+                    <div class="stat-card" id="earlyCard" data-type="early">
+                        <div class="stat-value early-stat" id="earlyCount">0</div>
+                        <div class="stat-label">早退记录</div>
+                    </div>
+                    
+                    <div class="stat-card" id="absentCard" data-type="absent">
+                        <div class="stat-value absent-stat" id="absentCount">0</div>
+                        <div class="stat-label">缺勤记录</div>
+                    </div>
+                </div>
+                
+                <!-- 合并后的筛选和导出区域 -->
+                <div class="filter-export-container">
+                    <div class="active-filter-container" id="activeFilters">
+                        <span>当前筛选：</span>
+                        <div class="filter-tag active" id="allFilterTag">
+                            全部异常 <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="export-container">
+                        <div class="export-info">
+                            <i class="fas fa-info-circle"></i>
+                            当前已筛选出<span class="export-count" id="exportCount">0</span> 条异常记录
+                        </div>
+                        <button class="export-btn" id="exportBtn">
+                            <i class="fas fa-file-excel"></i> 生成考勤异常说明表
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th class="filter-header-container">
+                                    <div class="filter-header" id="nameHeader">
+                                        <span>姓名</span>
+                                        <i class="fas fa-filter filter-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="filter-header-container">
+                                    <div class="filter-header" id="departmentHeader">
+                                        <span>部门</span>
+                                        <i class="fas fa-filter filter-icon"></i>
+                                    </div>
+                                </th>
+                                <th>最早进门时间</th>
+                                <th>最晚出门时间</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 数据将通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- 空状态提示 -->
+                    <div id="emptyTableMessage" class="empty-table-message">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>没有筛选到异常记录</h3>
+                        <p>当前筛选条件下未发现异常记录</p>
+                        <a href="javascript:void(0)" id="resetFilterLink">查看全部异常记录</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <div class="footer">
+            <div class="copyright">
+                © 2025 考勤异常数据统计系统<br>
+                开发者：新媒体技术部创新研发科
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选面板 - 放在body底部确保正确显示 -->
+    <div class="filter-panel" id="nameFilterPanel">
+        <h4>筛选姓名 <button class="close-btn">&times;</button></h4>
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="nameSearch" placeholder="搜索姓名...">
+        </div>
+        <div class="filter-list" id="nameFilterList"></div>
+        <div class="filter-actions">
+            <button class="select-all-btn" id="selectAllNames">全选</button>
+            <button class="clear-filter-btn" id="clearNameFilter">清空</button>
+        </div>
+        <button class="apply-filter-btn" id="applyNameFilter">应用筛选</button>
+    </div>
+    
+    <div class="filter-panel" id="departmentFilterPanel">
+        <h4>筛选部门 <button class="close-btn">&times;</button></h4>
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="departmentSearch" placeholder="搜索部门...">
+        </div>
+        <div class="filter-list" id="departmentFilterList"></div>
+        <div class="filter-actions">
+            <button class="select-all-btn" id="selectAllDepartments">全选</button>
+            <button class="clear-filter-btn" id="clearDepartmentFilter">清空</button>
+        </div>
+        <button class="apply-filter-btn" id="applyDepartmentFilter">应用筛选</button>
+    </div>
+
+    <div id="errorLog" class="error-log">
+        <h3>
+            <span><i class="fas fa-exclamation-triangle"></i> 错误日志</span>
+            <button class="toggle-log-btn" id="toggleLogBtn">×</button>
+        </h3>
+        <div id="errorLogContent" class="error-log-content"></div>
+        <button id="showMoreErrors" class="show-more" style="display: none;">查看更多错误...</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+            const tableBody = document.getElementById('tableBody');
+            const abnormalCount = document.getElementById('abnormalCount');
+            const lateCount = document.getElementById('lateCount');
+            const earlyCount = document.getElementById('earlyCount');
+            const absentCount = document.getElementById('absentCount');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const fileInfo = document.getElementById('fileInfo');
+            const errorLog = document.getElementById('errorLog');
+            const errorLogContent = document.getElementById('errorLogContent');
+            const toggleLogBtn = document.getElementById('toggleLogBtn');
+            const debugLog = document.getElementById('debugLog');
+            const showMoreDebug = document.getElementById('showMoreDebug');
+            const showMoreErrors = document.getElementById('showMoreErrors');
+            const emptyTableMessage = document.getElementById('emptyTableMessage');
+            const resetFilterLink = document.getElementById('resetFilterLink');
+            const exportBtn = document.getElementById('exportBtn');
+            const exportCount = document.getElementById('exportCount');
+            
+            // 统计卡片元素
+            const abnormalCard = document.getElementById('abnormalCard');
+            const lateCard = document.getElementById('lateCard');
+            const earlyCard = document.getElementById('earlyCard');
+            const absentCard = document.getElementById('absentCard');
+            
+            // 使用说明展开/折叠功能
+            const instructionsToggle = document.querySelector('.instructions-toggle');
+            const instructions = document.querySelector('.instructions');
+            
+            if (instructionsToggle && instructions) {
+                instructionsToggle.addEventListener('click', function() {
+                    instructions.classList.toggle('expanded');
+                });
+            }
+            
+            // 点击上传按钮触发文件选择
+            if (uploadBtn && fileInput) {
+                uploadBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+            }
+            
+            // 点击上传区域触发文件选择
+            if (uploadArea && fileInput) {
+                uploadArea.addEventListener('click', function() {
+                    fileInput.click();
+                });
+            }
+            
+            // 切换错误日志显示
+            if (toggleLogBtn) {
+                toggleLogBtn.addEventListener('click', function() {
+                    errorLog.style.display = 'none';
+                });
+            }
+            
+            // 显示更多错误
+            if (showMoreErrors) {
+                showMoreErrors.addEventListener('click', function() {
+                    errorLogContent.textContent = errorMessages.join('\n');
+                    showMoreErrors.style.display = 'none';
+                });
+            }
+            
+            // 显示更多调试日志
+            if (showMoreDebug) {
+                showMoreDebug.addEventListener('click', function() {
+                    debugLog.textContent = debugMessages.join('\n');
+                    showMoreDebug.style.display = 'none';
+                });
+            }
+            
+            // 拖拽功能
+            if (uploadArea) {
+                uploadArea.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    uploadArea.classList.add('drag-over');
+                });
+                
+                uploadArea.addEventListener('dragleave', function() {
+                    uploadArea.classList.remove('drag-over');
+                });
+                
+                uploadArea.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    uploadArea.classList.remove('drag-over');
+                    
+                    if (e.dataTransfer.files.length) {
+                        fileInput.files = e.dataTransfer.files;
+                        handleFile(e.dataTransfer.files[0]);
+                    }
+                });
+            }
+            
+            // 文件选择处理
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    if (e.target.files.length) {
+                        handleFile(e.target.files[0]);
+                    }
+                });
+            }
+            
+            let attendanceData = [];
+            let currentFilteredData = [];
+            let departments = new Set();
+            let allEmployees = new Set();
+            let errorMessages = [];
+            let debugMessages = [];
+            const maxDisplayErrors = 5;
+            const maxDisplayDebug = 10;
+            
+            // 筛选状态
+            let nameFilter = new Set();
+            let departmentFilter = new Set();
+            let currentFilter = 'all'; // 'all', 'late', 'early', 'absent'
+            
+            // 2025年法定节假日（完整放假日期）
+            const legalHolidays2025 = [
+                // 元旦（1月1日）
+                '2025-01-01',
+                
+                // 春节（1月28日-2月4日）
+                '2025-01-28', '2025-01-29', '2025-01-30', '2025-01-31',
+                '2025-02-01', '2025-02-02', '2025-02-03', '2025-02-04',
+                
+                // 清明节（4月4日-6日）
+                '2025-04-04', '2025-04-05', '2025-04-06',
+                
+                // 劳动节（5月1日-5日）
+                '2025-05-01', '2025-05-02', '2025-05-03', '2025-05-04', '2025-05-05',
+                
+                // 端午节（5月31日-6月2日）
+                '2025-05-31', '2025-06-01', '2025-06-02',
+                
+                // 国庆节（10月1日-7日）
+                '2025-10-01', '2025-10-02', '2025-10-03', '2025-10-04', 
+                '2025-10-05', '2025-10-06', '2025-10-07',
+                
+                // 中秋节（10月6日）
+                '2025-10-06'
+            ];
+            
+            // 法定节假日名称映射
+            const holidayNameMap = {
+                '2025-01-01': '元旦',
+                '2025-01-28': '春节', '2025-01-29': '春节', '2025-01-30': '春节', '2025-01-31': '春节',
+                '2025-02-01': '春节', '2025-02-02': '春节', '2025-02-03': '春节', '2025-02-04': '春节',
+                '2025-04-04': '清明节', '2025-04-05': '清明节', '2025-04-06': '清明节',
+                '2025-05-01': '劳动节', '2025-05-02': '劳动节', '2025-05-03': '劳动节', 
+                '2025-05-04': '劳动节', '2025-05-05': '劳动节',
+                '2025-05-31': '端午节', '2025-06-01': '端午节', '2025-06-02': '端午节',
+                '2025-10-01': '国庆节', '2025-10-02': '国庆节', '2025-10-03': '国庆节',
+                '2025-10-04': '国庆节', '2025-10-05': '国庆节', '2025-10-06': '国庆节/中秋', '2025-10-07': '国庆节'
+            };
+            
+            // 调休上班的周末（视为工作日）
+            const workWeekends2025 = [
+                // 春节调休
+                '2025-01-26', // 星期日
+                '2025-02-08', // 星期六
+                
+                // 劳动节调休
+                '2025-04-27', // 星期日
+                
+                // 国庆节调休
+                '2025-09-28', // 星期日
+                '2025-10-11'  // 星期六
+            ];
+            
+            // 工作日定义（周一至周五）
+            const workdays = [1, 2, 3, 4, 5]; // 1=周一, 5=周五
+            
+            // 特定员工部门映射
+            const specialEmployees = {
+                '阮慧娟': '创新研发科',
+                '尹青': '创新研发科'
+            };
+            
+            // 添加错误日志
+            function addError(message) {
+                errorMessages.push(message);
+                updateErrorLogDisplay();
+                if (errorLog) errorLog.style.display = 'block';
+            }
+            
+            // 添加调试信息
+            function addDebug(message) {
+                debugMessages.push(message);
+                updateDebugLogDisplay();
+            }
+            
+            // 更新错误日志显示
+            function updateErrorLogDisplay() {
+                if (!errorLogContent) return;
+                
+                if (errorMessages.length > maxDisplayErrors) {
+                    errorLogContent.textContent = errorMessages.slice(0, maxDisplayErrors).join('\n');
+                    if (showMoreErrors) showMoreErrors.style.display = 'block';
+                } else {
+                    errorLogContent.textContent = errorMessages.join('\n');
+                    if (showMoreErrors) showMoreErrors.style.display = 'none';
+                }
+            }
+            
+            // 更新调试日志显示
+            function updateDebugLogDisplay() {
+                if (!debugLog) return;
+                
+                if (debugMessages.length > maxDisplayDebug) {
+                    debugLog.textContent = debugMessages.slice(0, maxDisplayDebug).join('\n');
+                    if (showMoreDebug) showMoreDebug.style.display = 'block';
+                } else {
+                    debugLog.textContent = debugMessages.join('\n');
+                    if (showMoreDebug) showMoreDebug.style.display = 'none';
+                }
+            }
+            
+            // 处理上传的文件
+            function handleFile(file) {
+                if (!file) return;
+                
+                // 重置错误和调试信息
+                errorMessages = [];
+                debugMessages = [];
+                if (errorLogContent) errorLogContent.textContent = '';
+                if (debugLog) debugLog.textContent = '';
+                if (showMoreErrors) showMoreErrors.style.display = 'none';
+                if (showMoreDebug) showMoreDebug.style.display = 'none';
+                if (errorLog) errorLog.style.display = 'none';
+                
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+                    addError('错误：请上传Excel文件（.xlsx 或 .xls 格式）');
+                    return;
+                }
+                
+                // 显示文件信息
+                if (fileName) fileName.textContent = file.name;
+                if (fileSize) fileSize.textContent = formatFileSize(file.size);
+                if (fileInfo) fileInfo.style.display = 'block';
+                
+                // 显示加载动画
+                if (loading) loading.style.display = 'block';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // 转换为JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        addDebug(`解析成功，共 ${jsonData.length} 条记录`);
+                        
+                        // 处理考勤数据
+                        processAttendanceData(jsonData);
+                        
+                        // 显示结果区域
+                        if (resultSection) resultSection.style.display = 'block';
+                        
+                        // 滚动到结果区域
+                        if (resultSection) resultSection.scrollIntoView({ behavior: 'smooth' });
+                    } catch (error) {
+                        console.error('解析Excel文件时出错:', error);
+                        addError(`解析Excel文件时出错：${error.message}`);
+                    } finally {
+                        // 隐藏加载动画
+                        if (loading) loading.style.display = 'none';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // 格式化时间字符串为 HH:mm:ss
+            function formatTime(date) {
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${hours}:${minutes}:${seconds}`;
+            }
+            
+            // 将时间字符串转换为秒数
+            function timeToSeconds(timeStr) {
+                if (!timeStr) return 0;
+                const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+                return hours * 3600 + minutes * 60 + seconds;
+            }
+            
+            // 判断是否为工作日
+            function isWorkday(dateStr) {
+                const dateObj = new Date(dateStr);
+                const dayOfWeek = dateObj.getDay();
+                const isWorkWeekend = workWeekends2025.includes(dateStr);
+                const isHoliday = legalHolidays2025.includes(dateStr);
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6) && !isWorkWeekend;
+                
+                return (workdays.includes(dayOfWeek) || isWorkWeekend) && !isHoliday;
+            }
+            
+            // 处理考勤数据
+            function processAttendanceData(rawData) {
+                // 重置数据
+                attendanceData = [];
+                currentFilteredData = [];
+                departments = new Set();
+                allEmployees = new Set();
+                nameFilter = new Set();
+                departmentFilter = new Set();
+                currentFilter = 'all';
+                
+                // 重置卡片选中状态
+                if (abnormalCard) abnormalCard.classList.add('active');
+                
+                // 更新筛选标签
+                updateFilterTags();
+                
+                // 存储所有日期
+                const allDates = new Set();
+                
+                // 存储所有员工-部门映射
+                const employeeDepartmentMap = {};
+                
+                // 存储分组后的数据 {日期+姓名: {date, name, department, inTimes: [], outTimes: []}}
+                const groupedData = {};
+                
+                // 确定打卡时间字段
+                let clockTimeField = '打卡时间';
+                if (rawData.length > 0) {
+                    const firstRecord = rawData[0];
+                    const headers = Object.keys(firstRecord);
+                    
+                    // 兼容"打开时间"字段
+                    if (!headers.includes('打卡时间') && headers.includes('打开时间')) {
+                        clockTimeField = '打开时间';
+                        addDebug('检测到"打开时间"字段，已自动兼容为打卡时间');
+                    } else if (!headers.includes('打卡时间')) {
+                        addError('错误：未找到打卡时间字段（可能字段名为"打卡时间"或"打开时间"）');
+                        return;
+                    }
+                }
+                
+                // 处理每条原始记录
+                rawData.forEach((record, index) => {
+                    try {
+                        // 跳过表头行（如果存在）
+                        if (index === 0 && record['编号'] === '编号') return;
+                        
+                        // 提取有效数据
+                        const name = record['姓名'] || '';
+                        let department = record['部门'] || '';
+                        const clockTime = record[clockTimeField] || '';
+                        const inOut = record['进出'] || '';
+                        
+                        // 跳过无效记录
+                        if (!name || !clockTime || !inOut) {
+                            addDebug(`跳过记录 ${index+1}: 姓名、打卡时间或进出类型为空`);
+                            return;
+                        }
+                        
+                        // 记录员工
+                        allEmployees.add(name);
+                        
+                        // 特殊员工部门处理
+                        if (specialEmployees[name]) {
+                            department = specialEmployees[name];
+                        }
+                        
+                        // 记录部门
+                        if (department) departments.add(department);
+                        
+                        // 更新员工-部门映射
+                        if (department) {
+                            employeeDepartmentMap[name] = department;
+                        }
+                        
+                        // 解析日期和时间
+                        let dateObj, timeStr;
+                        
+                        // 处理多种日期格式
+                        if (clockTime instanceof Date) {
+                            // 处理Date对象
+                            dateObj = new Date(clockTime);
+                            timeStr = formatTime(dateObj);
+                        } else if (typeof clockTime === 'string') {
+                            // 处理字符串格式的日期时间
+                            // 尝试解析 "2025/5/6 8:56:04" 格式
+                            if (clockTime.includes('/') && clockTime.includes(' ')) {
+                                const [datePart, timePart] = clockTime.split(' ');
+                                const [year, month, day] = datePart.split('/');
+                                dateObj = new Date(Number(year), Number(month)-1, Number(day));
+                                timeStr = timePart;
+                            } 
+                            // 尝试解析 ISO 格式
+                            else if (clockTime.includes('T')) {
+                                dateObj = new Date(clockTime);
+                                timeStr = formatTime(dateObj);
+                            } else {
+                                addError(`记录 ${index+1}: 无法解析的日期时间格式: ${clockTime}`);
+                                return;
+                            }
+                        } else if (typeof clockTime === 'number') {
+                            // Excel日期序列值
+                            dateObj = new Date((clockTime - 25569) * 86400 * 1000);
+                            timeStr = formatTime(dateObj);
+                        } else {
+                            addError(`记录 ${index+1}: 无法解析的日期时间类型: ${typeof clockTime}`);
+                            return;
+                        }
+                        
+                        // 获取日期字符串（YYYY-MM-DD）
+                        const year = dateObj.getFullYear();
+                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(dateObj.getDate()).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${day}`;
+                        
+                        // 记录日期
+                        allDates.add(dateStr);
+                        
+                        // 分组键：日期+姓名
+                        const key = `${dateStr}-${name}`;
+                        
+                        // 初始化分组数据
+                        if (!groupedData[key]) {
+                            groupedData[key] = {
+                                date: dateStr,
+                                name: name,
+                                department: department,
+                                inTimes: [],
+                                outTimes: []
+                            };
+                        }
+                        
+                        // 根据进出类型记录时间
+                        const inOutTrimmed = inOut.trim();
+                        
+                        // 只识别"进门"和"出门"
+                        if (inOutTrimmed === '进门') {
+                            groupedData[key].inTimes.push(timeStr);
+                        } else if (inOutTrimmed === '出门') {
+                            groupedData[key].outTimes.push(timeStr);
+                        } else {
+                            addDebug(`记录 ${index+1}: 无法识别的进出类型: ${inOutTrimmed}`);
+                        }
+                        
+                    } catch (error) {
+                        addError(`处理记录 ${index+1} 时出错: ${error.message}`);
+                    }
+                });
+                
+                // 转换分组数据为数组并应用考勤规则
+                attendanceData = Object.values(groupedData)
+                    .map(item => {
+                        // 计算最早进门时间和最晚出门时间
+                        const earliestIn = item.inTimes.length ? 
+                            item.inTimes.reduce((min, curr) => 
+                                timeToSeconds(curr) < timeToSeconds(min) ? curr : min, '23:59:59') : 
+                            null;
+                            
+                        const latestOut = item.outTimes.length ? 
+                            item.outTimes.reduce((max, curr) => 
+                                timeToSeconds(curr) > timeToSeconds(max) ? curr : max, '00:00:00') : 
+                            null;
+                        
+                        // 应用考勤规则
+                        let notes = [];
+                        let isLate = false;
+                        let isEarly = false;
+                        let isAbsent = false;
+                        
+                        // 规则2：迟到检查（9:30之后到岗）
+                        if (earliestIn && timeToSeconds(earliestIn) > timeToSeconds('09:30:00')) {
+                            notes.push(`迟到 (${earliestIn})`);
+                            isLate = true;
+                        }
+                        
+                        // 规则3：9:00-9:30到岗需18:00后下班
+                        if (earliestIn) {
+                            const earliestInSeconds = timeToSeconds(earliestIn);
+                            if (earliestInSeconds >= timeToSeconds('09:00:00') && 
+                                earliestInSeconds <= timeToSeconds('09:30:00')) {
+                                if (latestOut && timeToSeconds(latestOut) < timeToSeconds('18:00:00')) {
+                                    notes.push(`下班时间早于18:00 (${latestOut})`);
+                                    isEarly = true;
+                                }
+                            }
+                        }
+                        
+                        // 规则1：9:30前到岗需17:30后下班
+                        if (earliestIn && timeToSeconds(earliestIn) <= timeToSeconds('09:30:00')) {
+                            // 9:30前到岗需17:30后下班
+                            if (latestOut && timeToSeconds(latestOut) < timeToSeconds('17:30:00')) {
+                                notes.push(`下班时间早于17:30 (${latestOut})`);
+                                isEarly = true;
+                            }
+                        }
+                        
+                        // 规则4：早退检查（17:30之前离岗）
+                        if (latestOut && timeToSeconds(latestOut) < timeToSeconds('17:30:00')) {
+                            notes.push(`早退 (${latestOut})`);
+                            isEarly = true;
+                        }
+                        
+                        // 规则5：特殊情况处理
+                        if (!earliestIn && !latestOut) {
+                            notes.push('无打卡记录');
+                            isAbsent = true;
+                        } else if (!earliestIn) {
+                            notes.push('无进门记录');
+                            isAbsent = true;
+                        } else if (!latestOut) {
+                            notes.push('无出门记录');
+                            isAbsent = true;
+                        }
+                        
+                        // 合并备注
+                        let note = notes.join('，');
+                        
+                        // 检查日期属性
+                        const dateObj = new Date(item.date);
+                        const dayOfWeek = dateObj.getDay(); // 0=周日, 1=周一, ..., 6=周六
+                        const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+                        const weekdayName = weekdays[dayOfWeek];
+                        
+                        // 检查是否为调休上班日
+                        const isWorkWeekend = workWeekends2025.includes(item.date);
+                        // 检查是否为法定节假日
+                        const isHoliday = legalHolidays2025.includes(item.date);
+                        // 检查是否为周末（且不是调休上班日）
+                        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6) && !isWorkWeekend;
+                        
+                        // 添加日期属性备注
+                        if (note) {
+                            if (isHoliday) {
+                                const holidayName = holidayNameMap[item.date] || '法定节假日';
+                                note += ` [${holidayName}]`;
+                            } else if (isWeekend) {
+                                note += ` [${weekdayName}]`;
+                            }
+                        }
+                        
+                        return {
+                            date: item.date,
+                            name: item.name,
+                            department: item.department,
+                            earliestIn: earliestIn || '无记录',
+                            latestOut: latestOut || '无记录',
+                            note: note,
+                            isWeekend: isWeekend,
+                            isHoliday: isHoliday,
+                            hasError: notes.length > 0,
+                            isSpecial: specialEmployees[item.name] !== undefined,
+                            isLate: isLate,
+                            isEarly: isEarly,
+                            isAbsent: isAbsent
+                        };
+                    });
+                
+                // 新增规则：检查工作日无打卡记录
+                Array.from(allDates).forEach(dateStr => {
+                    // 只处理工作日
+                    if (!isWorkday(dateStr)) {
+                        // 不再显示跳过非工作日的日志
+                        return;
+                    }
+                    
+                    // 检查每个员工是否有该日期的记录
+                    allEmployees.forEach(empName => {
+                        const key = `${dateStr}-${empName}`;
+                        if (!groupedData[key]) {
+                            // 添加无打卡记录异常
+                            attendanceData.push({
+                                date: dateStr,
+                                name: empName,
+                                department: employeeDepartmentMap[empName] || '未知部门',
+                                earliestIn: '无记录',
+                                latestOut: '无记录',
+                                note: '无打卡记录',
+                                isWeekend: false,
+                                isHoliday: false,
+                                hasError: true,
+                                isSpecial: specialEmployees[empName] !== undefined,
+                                isLate: false,
+                                isEarly: false,
+                                isAbsent: true
+                            });
+                        }
+                    });
+                });
+                
+                // 过滤出有异常的数据
+                attendanceData = attendanceData.filter(item => item.hasError);
+                
+                // 更新筛选器
+                updateFilters();
+                
+                // 更新统计信息
+                updateSummary();
+                
+                // 渲染表格
+                renderTable();
+                
+                // 添加调试信息
+                if (attendanceData.length > 0) {
+                    addDebug(`处理完成，共生成 ${attendanceData.length} 条异常记录`);
+                } else {
+                    addDebug('处理完成，未发现异常记录');
+                }
+            }
+            
+            // 更新筛选器
+            function updateFilters() {
+                // 更新姓名筛选器
+                if (nameFilterList) {
+                    nameFilterList.innerHTML = '';
+                    allEmployees.forEach(employee => {
+                        const item = document.createElement('div');
+                        item.className = 'filter-item';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `name-${employee}`;
+                        checkbox.value = employee;
+                        checkbox.checked = nameFilter.has(employee);
+                        
+                        const label = document.createElement('label');
+                        label.htmlFor = `name-${employee}`;
+                        label.textContent = employee;
+                        
+                        item.appendChild(checkbox);
+                        item.appendChild(label);
+                        nameFilterList.appendChild(item);
+                    });
+                }
+                
+                // 更新部门筛选器
+                if (departmentFilterList) {
+                    departmentFilterList.innerHTML = '';
+                    departments.forEach(dept => {
+                        const item = document.createElement('div');
+                        item.className = 'filter-item';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `dept-${dept}`;
+                        checkbox.value = dept;
+                        checkbox.checked = departmentFilter.has(dept);
+                        
+                        const label = document.createElement('label');
+                        label.htmlFor = `dept-${dept}`;
+                        label.textContent = dept;
+                        
+                        item.appendChild(checkbox);
+                        item.appendChild(label);
+                        departmentFilterList.appendChild(item);
+                    });
+                }
+                
+                // 为所有复选框添加事件处理，防止冒泡
+                document.querySelectorAll('.filter-item input').forEach(checkbox => {
+                    checkbox.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                });
+            }
+            
+            // 更新统计信息
+            function updateSummary() {
+                const total = attendanceData.length;
+                if (abnormalCount) abnormalCount.textContent = total;
+                
+                // 统计各类异常数量
+                const late = attendanceData.filter(item => item.isLate).length;
+                const early = attendanceData.filter(item => item.isEarly).length;
+                const absent = attendanceData.filter(item => item.isAbsent).length;
+                
+                if (lateCount) lateCount.textContent = late;
+                if (earlyCount) earlyCount.textContent = early;
+                if (absentCount) absentCount.textContent = absent;
+            }
+            
+            // 渲染表格
+            function renderTable() {
+                // 清空表格内容
+                if (tableBody) tableBody.innerHTML = '';
+                
+                // 过滤数据
+                currentFilteredData = attendanceData.filter(item => {
+                    // 姓名筛选
+                    if (nameFilter.size > 0 && !nameFilter.has(item.name)) {
+                        return false;
+                    }
+                    
+                    // 部门筛选
+                    if (departmentFilter.size > 0 && !departmentFilter.has(item.department)) {
+                        return false;
+                    }
+                    
+                    // 异常类型筛选
+                    if (currentFilter !== 'all') {
+                        if (currentFilter === 'late' && !item.isLate) return false;
+                        if (currentFilter === 'early' && !item.isEarly) return false;
+                        if (currentFilter === 'absent' && !item.isAbsent) return false;
+                    }
+                    
+                    return true;
+                });
+                
+                // 更新导出计数
+                if (exportCount) {
+                    exportCount.textContent = currentFilteredData.length;
+                    // 更新UI中的导出计数显示
+                    document.querySelector('.export-count').textContent = currentFilteredData.length;
+                }
+                
+                // 启用/禁用导出按钮
+                if (exportBtn) exportBtn.disabled = currentFilteredData.length === 0;
+                
+                // 显示空状态或表格内容
+                const resultTable = document.getElementById('resultTable');
+                
+                if (currentFilteredData.length === 0) {
+                    if (resultTable) resultTable.style.display = 'none';
+                    if (emptyTableMessage) emptyTableMessage.style.display = 'block';
+                } else {
+                    if (resultTable) resultTable.style.display = 'table';
+                    if (emptyTableMessage) emptyTableMessage.style.display = 'none';
+                    
+                    // 填充表格
+                    currentFilteredData.forEach(item => {
+                        const row = document.createElement('tr');
+                        
+                        // 为异常行添加特殊样式
+                        row.style.backgroundColor = '#fff9f9';
+                        
+                        // 周末行添加特殊样式
+                        if (item.isWeekend) {
+                            row.classList.add('weekend-row');
+                        }
+                        
+                        // 法定节假日行添加特殊样式
+                        if (item.isHoliday) {
+                            row.classList.add('holiday-row');
+                        }
+                        
+                        // 部门徽章样式
+                        let departmentBadge = item.department;
+                        if (item.isSpecial) {
+                            departmentBadge = `<span class="department-badge special-department">${item.department}</span>`;
+                        } else {
+                            departmentBadge = `<span class="department-badge">${item.department}</span>`;
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${item.date}</td>
+                            <td>${item.name}</td>
+                            <td>${departmentBadge}</td>
+                            <td>${item.earliestIn}</td>
+                            <td>${item.latestOut}</td>
+                            <td>${formatNote(item.note)}</td>
+                        `;
+                        
+                        if (tableBody) tableBody.appendChild(row);
+                    });
+                }
+                
+                // 更新筛选图标状态
+                updateFilterIcons();
+            }
+            
+            // 更新筛选图标状态
+            function updateFilterIcons() {
+                if (!nameHeader || !departmentHeader) return;
+                
+                const nameFilterIcon = nameHeader.querySelector('.filter-icon');
+                const departmentFilterIcon = departmentHeader.querySelector('.filter-icon');
+                
+                // 重置所有图标
+                if (nameFilterIcon) nameFilterIcon.classList.remove('active');
+                if (departmentFilterIcon) departmentFilterIcon.classList.remove('active');
+                
+                // 添加活动状态
+                if (nameFilter.size > 0 && nameFilterIcon) {
+                    nameFilterIcon.classList.add('active');
+                }
+                if (departmentFilter.size > 0 && departmentFilterIcon) {
+                    departmentFilterIcon.classList.add('active');
+                }
+            }
+            
+            // 更新筛选标签
+            function updateFilterTags() {
+                // 清空当前标签
+                const activeFilters = document.getElementById('activeFilters');
+                if (!activeFilters) return;
+                
+                activeFilters.innerHTML = '<span>当前筛选：</span>';
+                
+                // 添加异常类型标签
+                if (currentFilter === 'all') {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag active';
+                    tag.innerHTML = '全部异常 <i class="fas fa-times"></i>';
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        setCurrentFilter('all');
+                    });
+                    activeFilters.appendChild(tag);
+                } else if (currentFilter === 'late') {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag active';
+                    tag.innerHTML = '迟到记录 <i class="fas fa-times"></i>';
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        setCurrentFilter('all');
+                    });
+                    activeFilters.appendChild(tag);
+                } else if (currentFilter === 'early') {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag active';
+                    tag.innerHTML = '早退记录 <i class="fas fa-times"></i>';
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        setCurrentFilter('all');
+                    });
+                    activeFilters.appendChild(tag);
+                } else if (currentFilter === 'absent') {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag active';
+                    tag.innerHTML = '缺勤记录 <i class="fas fa-times"></i>';
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        setCurrentFilter('all');
+                    });
+                    activeFilters.appendChild(tag);
+                }
+                
+                // 添加姓名筛选标签
+                if (nameFilter.size > 0) {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag';
+                    tag.innerHTML = `姓名筛选 (${nameFilter.size}) <i class="fas fa-times"></i>`;
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // 清除姓名筛选
+                        nameFilter.clear();
+                        // 更新筛选面板
+                        updateFilters();
+                        // 重新渲染表格
+                        renderTable();
+                        // 更新筛选标签
+                        updateFilterTags();
+                    });
+                    activeFilters.appendChild(tag);
+                }
+                
+                // 添加部门筛选标签
+                if (departmentFilter.size > 0) {
+                    const tag = document.createElement('div');
+                    tag.className = 'filter-tag';
+                    tag.innerHTML = `部门筛选 (${departmentFilter.size}) <i class="fas fa-times"></i>`;
+                    tag.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // 清除部门筛选
+                        departmentFilter.clear();
+                        // 更新筛选面板
+                        updateFilters();
+                        // 重新渲染表格
+                        renderTable();
+                        // 更新筛选标签
+                        updateFilterTags();
+                    });
+                    activeFilters.appendChild(tag);
+                }
+            }
+            
+            // 设置当前筛选类型
+            function setCurrentFilter(filterType) {
+                currentFilter = filterType;
+                
+                // 更新卡片选中状态
+                document.querySelectorAll('.stat-card').forEach(card => {
+                    card.classList.remove('active');
+                });
+                
+                if (filterType === 'all' && abnormalCard) {
+                    abnormalCard.classList.add('active');
+                } else if (filterType === 'late' && lateCard) {
+                    lateCard.classList.add('active');
+                } else if (filterType === 'early' && earlyCard) {
+                    earlyCard.classList.add('active');
+                } else if (filterType === 'absent' && absentCard) {
+                    absentCard.classList.add('active');
+                }
+                
+                // 更新筛选标签
+                updateFilterTags();
+                
+                // 重新渲染表格
+                renderTable();
+            }
+            
+            // 格式化备注信息
+            function formatNote(note) {
+                if (!note) return '';
+                
+                if (note.includes('[周六]')) {
+                    note = note.replace('[周六]', '<span class="note-weekend">[周六]</span>');
+                }
+                if (note.includes('[周日]')) {
+                    note = note.replace('[周日]', '<span class="note-weekend">[周日]</span>');
+                }
+                if (note.includes('[法定节假日]') || note.includes('[春节]') || 
+                    note.includes('[劳动节]') || note.includes('[国庆节]')) {
+                    note = note.replace('[法定节假日]', '<span class="note-holiday">[法定节假日]</span>')
+                        .replace('[春节]', '<span class="note-holiday">[春节]</span>')
+                        .replace('[劳动节]', '<span class="note-holiday">[劳动节]</span>')
+                        .replace('[国庆节]', '<span class="note-holiday">[国庆节]</span>');
+                }
+                if (note.includes('迟到')) {
+                    note = note.replace('迟到', '<span class="note-late">迟到</span>');
+                }
+                if (note.includes('早退')) {
+                    note = note.replace('早退', '<span class="note-early">早退</span>');
+                }
+                if (note.includes('无打卡记录') || note.includes('无进门记录') || note.includes('无出门记录')) {
+                    note = note.replace('无打卡记录', '<span class="note-no-record">无打卡记录</span>')
+                        .replace('无进门记录', '<span class="note-no-record">无进门记录</span>')
+                        .replace('无出门记录', '<span class="note-no-record">无出门记录</span>');
+                }
+                return note;
+            }
+            
+            // 筛选功能实现
+            function setupFilterPanels() {
+                // 姓名筛选面板
+                if (nameHeader) {
+                    nameHeader.addEventListener('click', function(e) {
+                        e.stopPropagation(); // 阻止事件冒泡
+                        
+                        // 关闭其他面板
+                        if (departmentFilterPanel) departmentFilterPanel.style.display = 'none';
+                        
+                        // 计算位置
+                        const headerRect = nameHeader.getBoundingClientRect();
+                        if (nameFilterPanel) {
+                            nameFilterPanel.style.left = `${headerRect.left}px`;
+                            nameFilterPanel.style.top = `${headerRect.bottom + window.scrollY}px`;
+                            
+                            // 切换当前面板
+                            const isVisible = nameFilterPanel.style.display === 'flex';
+                            nameFilterPanel.style.display = isVisible ? 'none' : 'flex';
+                            
+                            // 如果打开面板，聚焦搜索框
+                            if (nameFilterPanel.style.display === 'flex' && nameSearch) {
+                                nameSearch.focus();
+                            }
+                        }
+                    });
+                }
+                
+                // 部门筛选面板
+                if (departmentHeader) {
+                    departmentHeader.addEventListener('click', function(e) {
+                        e.stopPropagation(); // 阻止事件冒泡
+                        
+                        // 关闭其他面板
+                        if (nameFilterPanel) nameFilterPanel.style.display = 'none';
+                        
+                        // 计算位置
+                        const headerRect = departmentHeader.getBoundingClientRect();
+                        if (departmentFilterPanel) {
+                            departmentFilterPanel.style.left = `${headerRect.left}px`;
+                            departmentFilterPanel.style.top = `${headerRect.bottom + window.scrollY}px`;
+                            
+                            // 切换当前面板
+                            const isVisible = departmentFilterPanel.style.display === 'flex';
+                            departmentFilterPanel.style.display = isVisible ? 'none' : 'flex';
+                            
+                            // 如果打开面板，聚焦搜索框
+                            if (departmentFilterPanel.style.display === 'flex' && departmentSearch) {
+                                departmentSearch.focus();
+                            }
+                        }
+                    });
+                }
+                
+                // 关闭按钮
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (this.closest('.filter-panel')) {
+                            this.closest('.filter-panel').style.display = 'none';
+                        }
+                    });
+                });
+                
+                // 点击页面其他位置关闭面板
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.filter-panel') && 
+                        !e.target.closest('.filter-header')) {
+                        if (nameFilterPanel) nameFilterPanel.style.display = 'none';
+                        if (departmentFilterPanel) departmentFilterPanel.style.display = 'none';
+                    }
+                });
+                
+                // 姓名搜索功能
+                if (nameSearch) {
+                    nameSearch.addEventListener('input', function() {
+                        const searchTerm = this.value.toLowerCase();
+                        const items = nameFilterList.querySelectorAll('.filter-item');
+                        
+                        items.forEach(item => {
+                            const employee = item.querySelector('label').textContent.toLowerCase();
+                            if (employee.includes(searchTerm)) {
+                                item.style.display = 'flex';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                    });
+                }
+                
+                // 部门搜索功能
+                if (departmentSearch) {
+                    departmentSearch.addEventListener('input', function() {
+                        const searchTerm = this.value.toLowerCase();
+                        const items = departmentFilterList.querySelectorAll('.filter-item');
+                        
+                        items.forEach(item => {
+                            const dept = item.querySelector('label').textContent.toLowerCase();
+                            if (dept.includes(searchTerm)) {
+                                item.style.display = 'flex';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                    });
+                }
+                
+                // 全选姓名
+                if (selectAllNames) {
+                    selectAllNames.addEventListener('click', function() {
+                        const checkboxes = nameFilterList.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = true;
+                        });
+                    });
+                }
+                
+                // 全选部门
+                if (selectAllDepartments) {
+                    selectAllDepartments.addEventListener('click', function() {
+                        const checkboxes = departmentFilterList.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = true;
+                        });
+                    });
+                }
+                
+                // 清空姓名筛选
+                if (clearNameFilter) {
+                    clearNameFilter.addEventListener('click', function() {
+                        const checkboxes = nameFilterList.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                    });
+                }
+                
+                // 清空部门筛选
+                if (clearDepartmentFilter) {
+                    clearDepartmentFilter.addEventListener('click', function() {
+                        const checkboxes = departmentFilterList.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                    });
+                }
+                
+                // 应用姓名筛选
+                if (applyNameFilter) {
+                    applyNameFilter.addEventListener('click', function() {
+                        nameFilter = new Set();
+                        const checkboxes = nameFilterList.querySelectorAll('input[type="checkbox"]:checked');
+                        
+                        checkboxes.forEach(checkbox => {
+                            nameFilter.add(checkbox.value);
+                        });
+                        
+                        // 关闭面板
+                        if (nameFilterPanel) nameFilterPanel.style.display = 'none';
+                        
+                        // 更新筛选标签
+                        updateFilterTags();
+                        
+                        // 重新渲染表格
+                        renderTable();
+                    });
+                }
+                
+                // 应用部门筛选
+                if (applyDepartmentFilter) {
+                    applyDepartmentFilter.addEventListener('click', function() {
+                        departmentFilter = new Set();
+                        const checkboxes = departmentFilterList.querySelectorAll('input[type="checkbox"]:checked');
+                        
+                        checkboxes.forEach(checkbox => {
+                            departmentFilter.add(checkbox.value);
+                        });
+                        
+                        // 关闭面板
+                        if (departmentFilterPanel) departmentFilterPanel.style.display = 'none';
+                        
+                        // 更新筛选标签
+                        updateFilterTags();
+                        
+                        // 重新渲染表格
+                        renderTable();
+                    });
+                }
+            }
+            
+            // 重置筛选条件
+            if (resetFilterLink) {
+                resetFilterLink.addEventListener('click', function() {
+                    nameFilter.clear();
+                    departmentFilter.clear();
+                    setCurrentFilter('all');
+                    updateFilters();
+                    renderTable();
+                    updateFilterTags();
+                });
+            }
+            
+            // 添加统计卡片点击事件
+            if (abnormalCard) {
+                abnormalCard.addEventListener('click', function() {
+                    setCurrentFilter('all');
+                });
+            }
+            
+            if (lateCard) {
+                lateCard.addEventListener('click', function() {
+                    setCurrentFilter('late');
+                });
+            }
+            
+            if (earlyCard) {
+                earlyCard.addEventListener('click', function() {
+                    setCurrentFilter('early');
+                });
+            }
+            
+            if (absentCard) {
+                absentCard.addEventListener('click', function() {
+                    setCurrentFilter('absent');
+                });
+            }
+            
+            // 导出功能
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    if (currentFilteredData.length === 0) {
+                        alert('没有可导出的异常数据');
+                        return;
+                    }
+                    
+                    // 按姓名分组数据
+                    const groupedData = {};
+                    currentFilteredData.forEach(item => {
+                        if (!groupedData[item.name]) {
+                            groupedData[item.name] = [];
+                        }
+                        groupedData[item.name].push({
+                            date: item.date,
+                            note: item.note
+                        });
+                    });
+                    
+                    // 准备Excel数据
+                    const excelData = [
+                        ['姓名', '日期', '异常描述', '说明', '备注'] // 表头
+                    ];
+                    
+                    // 合并单元格信息
+                    const merges = [];
+                    let rowIndex = 1; // 从第二行开始（第一行是表头）
+                    
+                    // 遍历分组数据
+                    Object.keys(groupedData).forEach(name => {
+                        const records = groupedData[name];
+                        const startRow = rowIndex;
+                        
+                        records.forEach(record => {
+                            excelData.push([
+                                name,
+                                record.date,
+                                record.note, // 异常描述
+                                '', // 说明留空
+                                ''  // 备注留空
+                            ]);
+                            rowIndex++;
+                        });
+                        
+                        const endRow = rowIndex - 1;
+                        
+                        // 如果该姓名有多条记录，添加合并单元格
+                        if (records.length > 1) {
+                            merges.push({
+                                s: { r: startRow, c: 0 }, // 起始行，列（0代表第一列）
+                                e: { r: endRow, c: 0 }    // 结束行，列
+                            });
+                        }
+                    });
+                    
+                    // 创建工作簿和工作表
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.aoa_to_sheet(excelData);
+                    
+                    // 设置合并单元格
+                    if (merges.length > 0) {
+                        ws['!merges'] = merges;
+                    }
+                    
+                    // 设置列宽
+                    const colWidths = [
+                        { wch: 15 }, // 姓名列宽
+                        { wch: 15 }, // 日期列宽
+                        { wch: 40 }, // 异常描述列宽
+                        { wch: 40 }, // 说明列宽
+                        { wch: 40 }  // 备注列宽
+                    ];
+                    ws['!cols'] = colWidths;
+                    
+                    // 设置单元格样式
+                    // 注意：xlsx.js 本身不支持设置样式，这里通过添加样式字符串来实现
+                    // 对于合并的单元格，设置垂直居中
+                    if (merges.length > 0) {
+                        merges.forEach(merge => {
+                            for (let r = merge.s.r; r <= merge.e.r; r++) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: r, c: 0 });
+                                if (!ws[cellAddress]) continue;
+                                if (!ws[cellAddress].s) ws[cellAddress].s = {};
+                                // 设置垂直居中
+                                ws[cellAddress].s.vertical = "center";
+                                // 设置水平居中
+                                ws[cellAddress].s.alignment = { horizontal: "center" };
+                            }
+                        });
+                    }
+                    
+                    // 为异常描述和说明列设置自动换行
+                    for (let r = 1; r < excelData.length; r++) {
+                        // 异常描述列（第3列，索引2）
+                        const noteCell = XLSX.utils.encode_cell({ r: r, c: 2 });
+                        if (!ws[noteCell]) continue;
+                        if (!ws[noteCell].s) ws[noteCell].s = {};
+                        // 设置自动换行
+                        ws[noteCell].s.wrapText = true;
+                        
+                        // 说明列（第4列，索引3）
+                        const explanationCell = XLSX.utils.encode_cell({ r: r, c: 3 });
+                        if (!ws[explanationCell]) continue;
+                        if (!ws[explanationCell].s) ws[explanationCell].s = {};
+                        // 设置自动换行
+                        ws[explanationCell].s.wrapText = true;
+                        
+                        // 备注列（第5列，索引4）
+                        const remarkCell = XLSX.utils.encode_cell({ r: r, c: 4 });
+                        if (!ws[remarkCell]) continue;
+                        if (!ws[remarkCell].s) ws[remarkCell].s = {};
+                        // 设置自动换行
+                        ws[remarkCell].s.wrapText = true;
+                    }
+                    
+                    // 将工作表添加到工作簿
+                    XLSX.utils.book_append_sheet(wb, ws, "考勤异常说明表");
+                    
+                    // 获取当前筛选数据中的年月（使用第一个记录的日期）
+                    let yearMonth = "考勤数据";
+                    if (currentFilteredData.length > 0) {
+                        const firstDate = currentFilteredData[0].date;
+                        const dateParts = firstDate.split('-');
+                        if (dateParts.length === 3) {
+                            yearMonth = `${dateParts[0]}年${dateParts[1]}月`;
+                        }
+                    }
+                    
+                    // 获取当前筛选的员工姓名
+                    const uniqueNames = new Set();
+                    currentFilteredData.forEach(item => uniqueNames.add(item.name));
+                    
+                    let namePart = "多人";
+                    if (uniqueNames.size === 1) {
+                        namePart = Array.from(uniqueNames)[0];
+                    }
+                    
+                    const fileName = `考勤异常说明表_${namePart}_${yearMonth}.xlsx`;
+                    
+                    // 生成Excel文件并下载
+                    XLSX.writeFile(wb, fileName);
+                    
+                    addDebug(`已生成考勤异常说明表: ${fileName}`);
+                });
+            }
+            
+            // 添加示例调试信息
+            addDebug('系统已准备就绪，等待上传考勤数据...');
+            
+            // 初始化筛选面板
+            setupFilterPanels();
+        });
+    </script>
+</body>
+</html>
